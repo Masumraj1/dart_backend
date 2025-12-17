@@ -24,4 +24,36 @@ class DatabaseClient {
     final result = await _collection.deleteOne(where.eq('id', id));
     return result.isSuccess;
   }
+
+  Future<List<Map<String, dynamic>>> getAllTodos() async {
+    final result = await _collection.find().toList();
+
+    return result.map((doc) {
+      return {
+        'id': doc['id'],
+        'title': doc['title'],
+        'completed': doc['completed'],
+      };
+    }).toList();
+  }
+  Future<bool> updateTodo(String id, String? title, bool? completed) async {
+    final modifier = modify;
+
+    if (title != null) {
+      modifier.set('title', title);
+    }
+
+    if (completed != null) {
+      modifier.set('completed', completed);
+    }
+
+    final result = await _collection.updateOne(
+      where.eq('id', id),
+      modifier,
+    );
+
+    return result.isSuccess && result.nModified > 0;
+  }
+
+
 }

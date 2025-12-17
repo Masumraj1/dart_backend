@@ -58,4 +58,39 @@ void main() async {
 
   final server = await io.serve(handler, '0.0.0.0', 8090);
   print('🚀 Server running on http://localhost:${server.port}');
+
+
+  // GET all todos
+  router.get('/todos', (Request req) async {
+    final todos = await dbClient.getAllTodos();
+
+    return Response.ok(
+      jsonEncode(todos),
+      headers: {'Content-Type': 'application/json'},
+    );
+  });
+
+  // UPDATE todo
+  router.put('/todos/<id>', (Request req, String id) async {
+    final body = await req.readAsString();
+    final data = jsonDecode(body);
+
+    final updated = await dbClient.updateTodo(
+      id,
+      data['title'],
+      data['completed'],
+    );
+
+    if (!updated) {
+      return Response.notFound(
+        jsonEncode({'error': 'Todo not found'}),
+      );
+    }
+
+    return Response.ok(
+      jsonEncode({'message': 'Updated successfully'}),
+    );
+  });
+
+
 }
