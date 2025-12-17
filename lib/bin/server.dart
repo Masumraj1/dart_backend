@@ -1,96 +1,29 @@
-import 'dart:convert';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as io;
-import 'package:shelf_router/shelf_router.dart';
-import 'package:uuid/uuid.dart';
 
 import '../db/database_client.dart';
+import '../routes/todo_routes.dart';
 
-void main() async {
+Future<void> main() async {
   final dbClient = await DatabaseClient.connect();
-  final router = Router();
+  final todoRoutes = TodoRoutes(dbClient);
 
-  // ✅ Root route
-  router.get('/', (Request req) {
-    return Response.ok(
-      '🚀 Todo Backend is running',
-      headers: {'Content-Type': 'text/plain'},
-    );
-  });
-
-  // ✅ POST create todo
-  router.post('/todos', (Request req) async {
-    final body = await req.readAsString();
-    final data = jsonDecode(body);
-
-    final newTodo = {
-      'id': const Uuid().v4(),
-      'title': data['title'] ?? 'No Title',
-      'completed': data['completed'] ?? false,
-    };
-
-    await dbClient.createTodo(newTodo);
-
-    return Response.ok(
-      jsonEncode(newTodo),
-      headers: {'Content-Type': 'application/json'},
-    );
-  });
-
-  // ✅ DELETE todo
-  router.delete('/todos/<id>', (Request req, String id) async {
-    final deleted = await dbClient.deleteTodo(id);
-
-    if (!deleted) {
-      return Response.notFound(
-        jsonEncode({'error': 'Todo not found'}),
-      );
-    }
-
-    return Response.ok(
-      jsonEncode({'message': 'Deleted successfully'}),
-    );
-  });
-
-  final handler = const Pipeline()
+  final handler = Pipeline()
       .addMiddleware(logRequests())
-      .addHandler(router);
+      .addMiddleware(_jsonHeaderMiddleware())
+      .addHandler(todoRoutes.router);
 
   final server = await io.serve(handler, '0.0.0.0', 8090);
   print('🚀 Server running on http://localhost:${server.port}');
+}
 
-
-  // GET all todos
-  router.get('/todos', (Request req) async {
-    final todos = await dbClient.getAllTodos();
-
-    return Response.ok(
-      jsonEncode(todos),
-      headers: {'Content-Type': 'application/json'},
-    );
-  });
-
-  // UPDATE todo
-  router.put('/todos/<id>', (Request req, String id) async {
-    final body = await req.readAsString();
-    final data = jsonDecode(body);
-
-    final updated = await dbClient.updateTodo(
-      id,
-      data['title'],
-      data['completed'],
-    );
-
-    if (!updated) {
-      return Response.notFound(
-        jsonEncode({'error': 'Todo not found'}),
+Middleware _jsonHeaderMiddleware() {
+  return (handler) {
+    return (request) async {
+      final response = await handler(request);
+      return response.change(
+        headers: {'Content-Type': 'application/json'},
       );
-    }
-
-    return Response.ok(
-      jsonEncode({'message': 'Updated successfully'}),
-    );
-  });
-
-
+    };
+  };
 }
