@@ -1,10 +1,10 @@
 import 'package:mongo_dart/mongo_dart.dart';
 
 class DatabaseClient {
-  final Db _db;
+  final Db db;
   final DbCollection _collection;
 
-  DatabaseClient._(this._db, this._collection);
+  DatabaseClient._(this.db, this._collection);
 
   static Future<DatabaseClient> connect() async {
     final db = await Db.create('mongodb://127.0.0.1:27017/todos_db');
